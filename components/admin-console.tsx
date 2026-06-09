@@ -15,6 +15,9 @@ import {
   roles,
   users,
 } from "@/lib/app/mock-data";
+import { REGISTRATION_STATUSES, SYNC_STATUSES } from "@/lib/app/constants";
+import { getCategoryPath } from "@/lib/app/category-utils";
+import { AdminScreenKey, getVisibleAdminScreens } from "@/lib/app/permissions";
 import {
   ColumnConfig,
   DocumentItem,
@@ -26,16 +29,6 @@ import {
   RoleItem,
   UserItem,
 } from "@/lib/app/types";
-
-type AdminScreenKey =
-  | "home"
-  | "categories"
-  | "documents"
-  | "faqs"
-  | "glossaries"
-  | "users"
-  | "groups"
-  | "roles";
 
 const screenLabels: Record<AdminScreenKey, string> = {
   home: "ホーム",
@@ -68,16 +61,10 @@ const menuSections: { title: string; items: { key: AdminScreenKey; label: string
   },
 ];
 
-const rolePermissions: Record<string, AdminScreenKey[]> = {
-  利用者: [],
-  編集者: ["categories", "documents", "faqs", "glossaries"],
-  管理者: ["categories", "documents", "faqs", "glossaries", "users", "groups", "roles"],
-};
-
 const roleOptions = roles.map((role) => role.displayName);
 const groupOptions = groups.map((group) => group.displayName);
-const documentRegistrationStatuses = ["下書き", "レビュー中", "承認済", "公開中", "廃止"];
-const documentSyncStatuses = ["未同期", "同期中", "同期済", "同期失敗"];
+const documentRegistrationStatuses = [...REGISTRATION_STATUSES];
+const documentSyncStatuses = [...SYNC_STATUSES];
 
 const documentColumns: ColumnConfig<DocumentItem>[] = [
   { key: "id", label: "ドキュメントID" },
@@ -94,7 +81,14 @@ const documentFields: FieldConfig<DocumentItem>[] = [
   { key: "id", label: "ドキュメントID", required: true },
   { key: "displayName", label: "表示名", required: true },
   { key: "version", label: "バージョン", required: true },
-  { key: "category", label: "カテゴリ", type: "category-single", categories, required: true },
+  {
+    key: "categoryId",
+    label: "カテゴリ",
+    type: "category-single",
+    categories,
+    required: true,
+    derive: (value) => ({ category: getCategoryPath(String(value), categories) }),
+  },
   {
     key: "registrationStatus",
     label: "登録状態",
@@ -125,7 +119,14 @@ const faqFields: FieldConfig<FaqItem>[] = [
   { key: "displayName", label: "表示名", required: true },
   { key: "body", label: "FAQ本文", type: "textarea", required: true },
   { key: "featured", label: "よくある質問フラグ", type: "boolean" },
-  { key: "category", label: "カテゴリ", type: "category-single", categories, required: true },
+  {
+    key: "categoryId",
+    label: "カテゴリ",
+    type: "category-single",
+    categories,
+    required: true,
+    derive: (value) => ({ category: getCategoryPath(String(value), categories) }),
+  },
   { key: "updatedAt", label: "更新日時" },
 ];
 
@@ -187,9 +188,9 @@ const userFields: FieldConfig<UserItem>[] = [
 const groupColumns: ColumnConfig<GroupItem>[] = [
   { key: "displayName", label: "表示名" },
   {
-    key: "categories",
+    key: "categoryIds",
     label: "カテゴリ数",
-    render: (row) => row.categories.length.toString(),
+    render: (row) => row.categoryIds.length.toString(),
   },
   { key: "memberCount", label: "所属人数" },
 ];
@@ -197,10 +198,15 @@ const groupColumns: ColumnConfig<GroupItem>[] = [
 const groupFields: FieldConfig<GroupItem>[] = [
   { key: "displayName", label: "表示名", required: true },
   {
-    key: "categories",
+    key: "categoryIds",
     label: "閲覧可能カテゴリ",
     type: "category-multiple",
     categories,
+    derive: (value) => ({
+      categories: Array.isArray(value)
+        ? value.map((categoryId) => getCategoryPath(categoryId, categories))
+        : [],
+    }),
   },
   { key: "memberCount", label: "所属人数", type: "number" },
 ];
@@ -249,7 +255,8 @@ export function AdminConsole() {
     教師データ: true,
     権限: true,
   });
-  const visibleScreens = rolePermissions[currentRole];
+  const currentRoleRecord = roles.find((role) => role.displayName === currentRole);
+  const visibleScreens = getVisibleAdminScreens(currentRoleRecord);
   const visibleMenuSections = menuSections
     .map((section) => ({
       ...section,

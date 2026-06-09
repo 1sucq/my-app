@@ -575,6 +575,7 @@ export function CrudManager<T extends IdentifiedRecord>({
                       <CategoryTreeSelect
                         categories={field.categories ?? []}
                         mode="single"
+                        valueMode="id"
                         value={displayValue(editingRow[field.key])}
                         onChange={(nextValue) => updateField(field, String(nextValue))}
                       />
@@ -584,6 +585,7 @@ export function CrudManager<T extends IdentifiedRecord>({
                       <CategoryTreeSelect
                         categories={field.categories ?? []}
                         mode="multiple"
+                        valueMode="id"
                         value={
                           Array.isArray(editingRow[field.key])
                             ? (editingRow[field.key] as string[])

@@ -15,8 +15,11 @@ function collectDescendantIds(categoryId: string, categories: Category[]): strin
 }
 
 function createEmptyCategory(categories: Category[]): Category {
+  const id = `cat-${Date.now().toString(36)}`;
+
   return {
-    id: `cat-${Date.now().toString(36)}`,
+    id,
+    code: id,
     name: "",
     level: 1,
     order: categories.filter((category) => !category.parentId).length + 1,

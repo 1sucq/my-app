@@ -4,287 +4,15 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { CategoryTree } from "@/components/category-tree";
-import { categories, documents, faqs, glossaries, groups } from "@/lib/app/mock-data";
-import { Category } from "@/lib/app/types";
-
-const initialThreads = [
-  "就業規則について",
-  "有給休暇について",
-  "経費精算について",
-  "社内手続きについて",
-];
-
-type ReferenceInfo = {
-  category: string;
-  dataType: "ドキュメント" | "FAQ" | "用語集";
-  title: string;
-  version?: string;
-  section: string;
-  storagePath?: string;
-};
-
-type AnswerCandidate = {
-  title: string;
-  body: string;
-  usedCategories: string[];
-  references: ReferenceInfo[];
-};
-
-type ChatMessage =
-  | {
-      role: "user";
-      text: string;
-    }
-  | {
-      role: "bot";
-      text?: string;
-      searchCategories?: string[];
-      answers?: AnswerCandidate[];
-    };
-
-function buildCategoryPaths(items: Category[]) {
-  const categoryMap = new Map(items.map((category) => [category.id, category]));
-
-  const pathOf = (category: Category): string => {
-    if (!category.parentId) return category.name;
-    const parent = categoryMap.get(category.parentId);
-    return parent ? `${pathOf(parent)} / ${category.name}` : category.name;
-  };
-
-  return items.reduce<Record<string, string>>((paths, category) => {
-    paths[category.id] = pathOf(category);
-    return paths;
-  }, {});
-}
-
-function getDescendantCategoryPaths(parentPath: string, allPaths: string[]) {
-  return allPaths.filter(
-    (path) => path === parentPath || path.startsWith(`${parentPath} / `),
-  );
-}
-
-function pickPreferredCategory(question: string, searchCategories: string[]) {
-  const keywordMap = [
-    { keyword: "副業", category: "服務 / 副業" },
-    { keyword: "兼業", category: "服務 / 兼業" },
-    { keyword: "遅刻", category: "服務 / 遅刻・早退" },
-    { keyword: "早退", category: "服務 / 遅刻・早退" },
-    { keyword: "服務違反", category: "服務 / 服務違反" },
-    { keyword: "服務", category: "服務 / 服務規律" },
-  ];
-  const matched = keywordMap.find(
-    (item) => question.includes(item.keyword) && searchCategories.includes(item.category),
-  );
-  return matched?.category;
-}
-
-function createMockAnswers(question: string, searchCategories: string[]): AnswerCandidate[] {
-  if (question.includes("副業")) {
-    return createSideJobAnswers(searchCategories);
-  }
-
-  const preferredCategory = pickPreferredCategory(question, searchCategories);
-  const primaryDocument =
-    documents.find((document) => document.category === preferredCategory) ??
-    documents.find((document) => searchCategories.includes(document.category)) ??
-    documents[0];
-  const secondaryDocument =
-    documents.find(
-      (document) =>
-        document.id !== primaryDocument.id && searchCategories.includes(document.category),
-    ) ?? primaryDocument;
-  const relatedFaq =
-    faqs.find((faq) => faq.category === preferredCategory) ??
-    faqs.find((faq) => searchCategories.includes(faq.category)) ??
-    faqs[0];
-  const glossary = glossaries[0];
-  const fallbackCategory = searchCategories[0] ?? primaryDocument.category;
-
-  const answers: AnswerCandidate[] = [
-    {
-      title: "回答案1：最も該当可能性が高い回答",
-      body:
-        "該当する社内規程では、申請・確認は所定の社内手続きに沿って行う想定です。まず対象カテゴリの最新公開文書を確認し、必要に応じて上長または担当部署へ確認してください。",
-      usedCategories: [primaryDocument.category],
-      references: [
-        {
-          category: primaryDocument.category,
-          dataType: "ドキュメント",
-          title: primaryDocument.displayName,
-          version: primaryDocument.version,
-          section: "該当箇所: 手続き・申請ルール",
-          storagePath: primaryDocument.storagePath,
-        },
-      ],
-    },
-    {
-      title: "回答案2：別条件・別カテゴリに該当する可能性がある回答",
-      body:
-        "条件によってはFAQに記載された運用ルールが優先される場合があります。よくある質問に該当する内容がある場合は、FAQ本文の補足条件も確認してください。",
-      usedCategories: [relatedFaq.category],
-      references: [
-        {
-          category: relatedFaq.category,
-          dataType: "FAQ",
-          title: relatedFaq.displayName,
-          section: "該当箇所: FAQ本文",
-        },
-        {
-          category: secondaryDocument.category,
-          dataType: "ドキュメント",
-          title: secondaryDocument.displayName,
-          version: secondaryDocument.version,
-          section: "該当箇所: 関連する運用ルール",
-          storagePath: secondaryDocument.storagePath,
-        },
-      ],
-    },
-  ];
-
-  if (glossary) {
-    answers.push({
-      title: "回答案3：補足・例外条件を踏まえた回答",
-      body:
-        "関連用語の定義や例外条件によって回答の解釈が変わる場合があります。文書やFAQだけで判断しづらい場合は、用語定義も合わせて確認してください。",
-      usedCategories: [fallbackCategory],
-      references: [
-        {
-          category: fallbackCategory,
-          dataType: "用語集",
-          title: glossary.term,
-          section: "該当箇所: 用語の意味",
-        },
-        {
-          category: primaryDocument.category,
-          dataType: "ドキュメント",
-          title: primaryDocument.displayName,
-          version: primaryDocument.version,
-          section: "該当箇所: 補足条件・例外条件",
-          storagePath: primaryDocument.storagePath,
-        },
-      ],
-    });
-  }
-
-  return answers.slice(0, 3);
-}
-
-function mockSignedUrl(storagePath?: string) {
-  if (!storagePath) return "#";
-  return `https://mock-s3-signed-url.example.com/open?path=${encodeURIComponent(storagePath)}`;
-}
-
-function createSideJobAnswers(searchCategories: string[]): AnswerCandidate[] {
-  const includesHr = searchCategories.some(
-    (category) => category === "人事" || category.startsWith("人事 /"),
-  );
-  const includesService = searchCategories.some(
-    (category) => category === "服務" || category.startsWith("服務 /"),
-  );
-  const hrDocument = documents.find((document) => document.category === "人事 / 規程") ?? documents[0];
-  const serviceDocument =
-    documents.find((document) => document.category === "服務 / 副業") ?? documents[0];
-  const serviceFaq = faqs.find((faq) => faq.category === "服務 / 副業");
-
-  if (includesHr && includesService) {
-    return [
-      {
-        title: "回答案1：人事規程と服務ルールを合わせた回答",
-        body:
-          "副業は可能な場合がありますが、事前申請と会社承認が必要です。人事規程で雇用上の手続きを確認し、服務カテゴリの副業ルールで競業・勤務影響・情報管理の条件を確認してください。",
-        usedCategories: ["服務 / 副業", "人事 / 規程"],
-        references: [
-          {
-            category: "服務 / 副業",
-            dataType: "ドキュメント",
-            title: serviceDocument.displayName,
-            version: serviceDocument.version,
-            section: "該当箇所: 副業の申請条件・禁止条件",
-            storagePath: serviceDocument.storagePath,
-          },
-          {
-            category: "人事 / 規程",
-            dataType: "ドキュメント",
-            title: hrDocument.displayName,
-            version: hrDocument.version,
-            section: "該当箇所: 雇用上の申請手続き",
-            storagePath: hrDocument.storagePath,
-          },
-        ],
-      },
-      {
-        title: "回答案2：服務カテゴリを優先した回答",
-        body:
-          "副業の可否判断では、勤務時間への影響、競業避止、会社情報の取り扱いが重要です。服務ルールに抵触する場合は、承認されない可能性があります。",
-        usedCategories: ["服務 / 副業"],
-        references: [
-          {
-            category: "服務 / 副業",
-            dataType: serviceFaq ? "FAQ" : "ドキュメント",
-            title: serviceFaq?.displayName ?? serviceDocument.displayName,
-            version: serviceFaq ? undefined : serviceDocument.version,
-            section: serviceFaq ? "該当箇所: FAQ本文" : "該当箇所: 副業の制限事項",
-            storagePath: serviceFaq ? undefined : serviceDocument.storagePath,
-          },
-        ],
-      },
-    ];
-  }
-
-  if (includesHr) {
-    return [
-      {
-        title: "回答案1：人事カテゴリのみを参照した回答",
-        body:
-          "人事カテゴリのみを検索対象にしているため、副業の詳細な服務条件までは参照していません。雇用上の申請や承認フローを確認し、必要に応じて服務カテゴリも検索対象に追加してください。",
-        usedCategories: ["人事 / 規程"],
-        references: [
-          {
-            category: "人事 / 規程",
-            dataType: "ドキュメント",
-            title: hrDocument.displayName,
-            version: hrDocument.version,
-            section: "該当箇所: 社内申請・承認手続き",
-            storagePath: hrDocument.storagePath,
-          },
-        ],
-      },
-    ];
-  }
-
-  if (includesService) {
-    return [
-      {
-        title: "回答案1：服務カテゴリのみを参照した回答",
-        body:
-          "副業は事前申請と会社承認が必要です。服務上は、競業にあたる業務、勤務に支障が出る働き方、会社情報を利用する活動は認められない可能性があります。",
-        usedCategories: ["服務 / 副業"],
-        references: [
-          {
-            category: "服務 / 副業",
-            dataType: "ドキュメント",
-            title: serviceDocument.displayName,
-            version: serviceDocument.version,
-            section: "該当箇所: 副業・兼業の許可条件",
-            storagePath: serviceDocument.storagePath,
-          },
-          ...(serviceFaq
-            ? [
-                {
-                  category: "服務 / 副業",
-                  dataType: "FAQ" as const,
-                  title: serviceFaq.displayName,
-                  section: "該当箇所: FAQ本文",
-                },
-              ]
-            : []),
-        ],
-      },
-    ];
-  }
-
-  return [];
-}
+import {
+  createMockAnswers,
+  initialThreads,
+  mockSignedUrl,
+  type ChatMessage,
+} from "@/lib/app/chat-mock";
+import { expandCategoryIds, getCategoryPaths } from "@/lib/app/category-utils";
+import { CURRENT_GROUP_ID } from "@/lib/app/constants";
+import { categories, groups } from "@/lib/app/mock-data";
 
 export function UserChat() {
   const router = useRouter();
@@ -298,45 +26,34 @@ export function UserChat() {
   ]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(["人事", "服務"]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(["cat-hr", "cat-service"]);
 
   const groupCategories = useMemo(
-    () => groups.find((group) => group.displayName === "人事部")?.categories ?? [],
+    () => groups.find((group) => group.id === CURRENT_GROUP_ID)?.categoryIds ?? [],
     [],
   );
-  const categoryPaths = useMemo(() => buildCategoryPaths(categories), []);
-  const allCategoryPaths = useMemo(() => Object.values(categoryPaths), [categoryPaths]);
-  const visibleCategories = useMemo(
-    () =>
-      [...new Set(
-        groupCategories.flatMap((category) =>
-          getDescendantCategoryPaths(category, allCategoryPaths),
-        ),
-      )],
-    [allCategoryPaths, groupCategories],
+  const visibleCategoryIds = useMemo(
+    () => expandCategoryIds(groupCategories, categories),
+    [groupCategories],
   );
-  const visibleCategorySet = useMemo(() => new Set(visibleCategories), [visibleCategories]);
+  const visibleCategorySet = useMemo(() => new Set(visibleCategoryIds), [visibleCategoryIds]);
   const visibleRootCategoryTree = useMemo(
     () =>
       categories.filter(
         (category) =>
           category.level === 1 &&
-          groupCategories.includes(categoryPaths[category.id]),
+          groupCategories.includes(category.id),
       ),
-    [categoryPaths, groupCategories],
+    [groupCategories],
   );
-  const effectiveSearchCategories = useMemo(
-    () =>
-      [...new Set(
-        selectedCategories.flatMap((category) =>
-          getDescendantCategoryPaths(category, visibleCategories),
-        ),
-      )],
-    [selectedCategories, visibleCategories],
+  const effectiveSearchCategoryIds = useMemo(
+    () => expandCategoryIds(selectedCategoryIds, categories).filter((id) => visibleCategorySet.has(id)),
+    [selectedCategoryIds, visibleCategorySet],
   );
-  const searchCategories = effectiveSearchCategories.length > 0
-    ? effectiveSearchCategories
-    : visibleCategories;
+  const searchCategoryIds = effectiveSearchCategoryIds.length > 0
+    ? effectiveSearchCategoryIds
+    : visibleCategoryIds;
+  const selectedCategoryNames = getCategoryPaths(selectedCategoryIds, categories);
 
   const createThread = () => {
     const threadName = `新規チャット ${threads.length + 1}`;
@@ -344,7 +61,7 @@ export function UserChat() {
     setActiveThread(threadName);
     setMessages([]);
     setInput("");
-    setSelectedCategories(groupCategories);
+    setSelectedCategoryIds(groupCategories);
   };
 
   const sendMessage = (event: FormEvent<HTMLFormElement>) => {
@@ -366,8 +83,11 @@ export function UserChat() {
         ...currentMessages,
         {
           role: "bot",
-          searchCategories: selectedCategories.length > 0 ? selectedCategories : groupCategories,
-          answers: createMockAnswers(userInput, searchCategories),
+          searchCategories: getCategoryPaths(
+            selectedCategoryIds.length > 0 ? selectedCategoryIds : groupCategories,
+            categories,
+          ),
+          answers: createMockAnswers(userInput, searchCategoryIds),
         },
       ]);
       setIsSending(false);
@@ -548,21 +268,22 @@ export function UserChat() {
             未選択の場合は、所属グループの閲覧可能カテゴリをすべて検索します。選択すると、そのカテゴリ配下のみで絞り込みます。
           </p>
           <div className="mt-4 rounded-md bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-900">
-            現在の検索対象：{selectedCategories.length > 0 ? selectedCategories.join("、") : "指定なし"}
+            現在の検索対象：{selectedCategoryNames.length > 0 ? selectedCategoryNames.join("、") : "指定なし"}
           </div>
           <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <CategoryTree
               categories={visibleRootCategoryTree}
-              selectedValues={selectedCategories}
+              selectedValues={selectedCategoryIds}
+              valueMode="id"
               selectable="multiple"
               onChange={(values) =>
-                setSelectedCategories(values.filter((value) => visibleCategorySet.has(value)))
+                setSelectedCategoryIds(values.filter((value) => visibleCategorySet.has(value)))
               }
             />
           </div>
           <button
             type="button"
-            onClick={() => setSelectedCategories(groupCategories)}
+            onClick={() => setSelectedCategoryIds(groupCategories)}
             className="mt-3 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             全カテゴリを選択

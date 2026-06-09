@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  buildCategoryTree,
+  flattenCategoryNode,
+  type CategoryNode,
+} from "@/lib/app/category-utils";
 import { Category } from "@/lib/app/types";
-
-type CategoryNode = Category & {
-  children: CategoryNode[];
-  path: string;
-};
 
 type ValueMode = "id" | "path";
 
@@ -30,45 +30,6 @@ type CategoryTreeSelectProps = {
   valueMode?: ValueMode;
   onChange: (value: string | string[]) => void;
 };
-
-function buildCategoryTree(categories: Category[]) {
-  const nodes = new Map<string, CategoryNode>();
-
-  categories.forEach((category) => {
-    nodes.set(category.id, { ...category, children: [], path: category.name });
-  });
-
-  const roots: CategoryNode[] = [];
-
-  nodes.forEach((node) => {
-    if (node.parentId && nodes.has(node.parentId)) {
-      nodes.get(node.parentId)?.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-
-  const sortNodes = (items: CategoryNode[]) => {
-    items.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
-    items.forEach((item) => sortNodes(item.children));
-  };
-
-  const applyPath = (items: CategoryNode[], parentPath = "") => {
-    items.forEach((item) => {
-      item.path = parentPath ? `${parentPath} / ${item.name}` : item.name;
-      applyPath(item.children, item.path);
-    });
-  };
-
-  sortNodes(roots);
-  applyPath(roots);
-
-  return roots;
-}
-
-function flattenNode(node: CategoryNode): CategoryNode[] {
-  return [node, ...node.children.flatMap((child) => flattenNode(child))];
-}
 
 function nodeValue(node: CategoryNode, valueMode: ValueMode) {
   return valueMode === "id" ? node.id : node.path;
@@ -130,7 +91,7 @@ export function CategoryTree({
   };
 
   const toggleMultiple = (node: CategoryNode) => {
-    const descendants = flattenNode(node).map((item) => nodeValue(item, valueMode));
+    const descendants = flattenCategoryNode(node).map((item) => nodeValue(item, valueMode));
     const allSelected = descendants.every((value) => selectedSet.has(value));
     const next = new Set(selectedSet);
 
@@ -146,7 +107,7 @@ export function CategoryTree({
     const hasChildren = node.children.length > 0;
     const isOpen = openIds.has(node.id);
     const value = nodeValue(node, valueMode);
-    const descendantValues = flattenNode(node).map((item) => nodeValue(item, valueMode));
+    const descendantValues = flattenCategoryNode(node).map((item) => nodeValue(item, valueMode));
     const selectedCount = descendantValues.filter((item) => selectedSet.has(item)).length;
     const isChecked = selectable === "multiple"
       ? selectedCount === descendantValues.length
