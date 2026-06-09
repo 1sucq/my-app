@@ -3,11 +3,12 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-import { createSupabaseClient } from "@/lib/supabase/client";
+type LoginTarget = "user" | "admin";
 
 export default function Home() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [loginTarget, setLoginTarget] = useState<LoginTarget>("user");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -15,86 +16,69 @@ export default function Home() {
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage("");
-    setIsLoading(true);
 
-    try {
-      const supabase = createSupabaseClient();
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        setErrorMessage(`ログインに失敗しました: ${error.message}`);
-        return;
-      }
-
-      router.push("/dashboard");
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? `ログインに失敗しました: ${error.message}`
-          : "ログインに失敗しました。",
-      );
-    } finally {
-      setIsLoading(false);
+    if (!loginId.trim() || !password.trim()) {
+      setErrorMessage("IDとパスワードを入力してください。");
+      return;
     }
-  };
 
-  const handleSignUp = async () => {
-    setErrorMessage("");
     setIsLoading(true);
-
-    try {
-      const supabase = createSupabaseClient();
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) {
-        setErrorMessage(`新規登録に失敗しました: ${error.message}`);
-        return;
-      }
-
-      router.push("/dashboard");
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? `新規登録に失敗しました: ${error.message}`
-          : "新規登録に失敗しました。",
-      );
-    } finally {
+    window.setTimeout(() => {
+      router.push(loginTarget === "user" ? "/user/chat" : "/admin");
       setIsLoading(false);
-    }
+    }, 300);
   };
 
   return (
-    <main className="flex flex-1 items-center justify-center bg-slate-50 px-6 py-12 text-slate-900">
-      <section className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
+    <main className="flex min-h-dvh flex-1 items-center justify-center bg-slate-50 px-6 py-12 text-slate-900">
+      <section className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold">ログイン</h1>
+          <p className="text-sm font-semibold text-slate-500">YourNavi-QAI</p>
+          <h1 className="mt-1 text-2xl font-bold">ログイン</h1>
           <p className="mt-2 text-sm text-slate-600">
-            メールアドレスとパスワードを入力してください。
+            利用する画面を選び、IDとパスワードを入力してください。
           </p>
+        </div>
+
+        <div className="mb-6 grid grid-cols-2 rounded-lg bg-slate-100 p-1">
+          {[
+            { key: "user", label: "利用者" },
+            { key: "admin", label: "管理者" },
+          ].map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => {
+                setLoginTarget(item.key as LoginTarget);
+                setErrorMessage("");
+              }}
+              className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                loginTarget === item.key
+                  ? "bg-white text-slate-950 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
 
         <form className="space-y-5" onSubmit={handleLogin}>
           <div>
             <label
-              htmlFor="email"
+              htmlFor="loginId"
               className="mb-2 block text-sm font-medium text-slate-700"
             >
-              メールアドレス
+              ID
             </label>
             <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              id="loginId"
+              name="loginId"
+              type="text"
+              autoComplete="username"
+              placeholder={loginTarget === "user" ? "user01" : "admin01"}
+              value={loginId}
+              onChange={(event) => setLoginId(event.target.value)}
               required
               className="w-full rounded-md border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
             />
@@ -131,20 +115,14 @@ export default function Home() {
             disabled={isLoading}
             className="w-full rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            {isLoading ? "処理中..." : "ログイン"}
+            {isLoading
+              ? "ログイン中..."
+              : `${loginTarget === "user" ? "チャット画面へ" : "管理者ホームへ"}ログイン`}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-600">
-          アカウントをお持ちでない方は{" "}
-          <button
-            type="button"
-            onClick={handleSignUp}
-            disabled={isLoading}
-            className="font-semibold text-slate-900 underline underline-offset-4 hover:text-slate-700"
-          >
-            新規登録はこちら
-          </button>
+        <p className="mt-6 rounded-md bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          画面確認用のモックログインです。ID/PASSは任意の文字を入力すると遷移できます。
         </p>
       </section>
     </main>
