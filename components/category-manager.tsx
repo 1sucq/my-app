@@ -93,7 +93,7 @@ export function CategoryManager({ initialRows }: CategoryManagerProps) {
             setEditingRow(createEmptyCategory(rows));
             setMessage("");
           }}
-          className="w-fit rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          className="w-full rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 sm:w-fit"
         >
           新規作成
         </button>
@@ -105,8 +105,8 @@ export function CategoryManager({ initialRows }: CategoryManagerProps) {
         </p>
       ) : null}
 
-      <div className="min-h-0 overflow-auto rounded-lg border border-slate-200 bg-white p-4">
-        <div className="mb-3 grid grid-cols-[1fr_140px] border-b border-slate-200 px-2 pb-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+      <div className="min-h-0 overflow-auto rounded-lg border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="mb-3 grid min-w-[420px] grid-cols-[1fr_140px] border-b border-slate-200 px-2 pb-3 text-xs font-bold uppercase tracking-wide text-slate-500 sm:min-w-0">
           <span>カテゴリ名</span>
           <span className="text-right">操作</span>
         </div>
@@ -124,14 +124,14 @@ export function CategoryManager({ initialRows }: CategoryManagerProps) {
 
       {editingRow ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+          <div className="flex max-h-[92dvh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
               <h2 className="text-lg font-bold text-slate-950">カテゴリ編集</h2>
               <p className="mt-1 text-sm text-slate-500">
                 親カテゴリを選ぶと階層を自動判定します。
               </p>
             </div>
-            <div className="grid gap-5 p-6">
+            <div className="grid gap-5 overflow-auto p-4 sm:p-6">
               {message && message !== "保存しました。" && message !== "削除しました。" ? (
                 <p className="rounded-md bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {message}
@@ -213,7 +213,7 @@ export function CategoryManager({ initialRows }: CategoryManagerProps) {
                 </label>
               </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">
+            <div className="grid grid-cols-2 gap-2 border-t border-slate-200 px-4 py-4 sm:flex sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={() => setEditingRow(null)}
@@ -235,12 +235,12 @@ export function CategoryManager({ initialRows }: CategoryManagerProps) {
 
       {rowToDelete ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl sm:p-6">
             <h2 className="text-lg font-bold text-slate-950">削除確認</h2>
             <p className="mt-3 text-sm text-slate-600">
               配下カテゴリも含めて削除します。よろしいですか？
             </p>
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
               <button
                 type="button"
                 onClick={() => setRowToDelete(null)}

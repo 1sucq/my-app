@@ -118,7 +118,7 @@ export function CategoryTree({
     return (
       <div key={node.id} className="space-y-1">
         <div
-          className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+          className={`flex flex-wrap items-center gap-2 rounded-md px-2 py-1.5 text-sm sm:flex-nowrap ${
             selectedSet.has(value)
               ? "bg-sky-50 text-sky-950 ring-1 ring-sky-100"
               : "text-slate-700 hover:bg-slate-50"
@@ -162,7 +162,7 @@ export function CategoryTree({
           </button>
 
           {showActions ? (
-            <div className="flex shrink-0 gap-2">
+            <div className="ml-7 flex w-full shrink-0 justify-end gap-2 sm:ml-0 sm:w-auto">
               <button
                 type="button"
                 onClick={() => onEdit?.(node)}

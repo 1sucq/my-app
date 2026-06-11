@@ -304,7 +304,7 @@ export function CrudManager<T extends IdentifiedRecord>({
           <h1 className="mt-1 text-2xl font-bold text-slate-950">{title}</h1>
           <p className="mt-1 text-sm text-slate-600">{description}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <button
             type="button"
             onClick={exportCsv}
@@ -313,7 +313,7 @@ export function CrudManager<T extends IdentifiedRecord>({
           >
             {loadingAction === "exporting" ? "読み込み中..." : "CSVエクスポート"}
           </button>
-          <label className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <label className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50">
             {loadingAction === "importing" ? "読み込み中..." : "CSVインポート"}
             <input
               type="file"
@@ -345,7 +345,7 @@ export function CrudManager<T extends IdentifiedRecord>({
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 lg:flex-row lg:items-end">
-        <label className="w-full max-w-md text-sm font-medium text-slate-700">
+        <label className="w-full text-sm font-medium text-slate-700 lg:max-w-md">
           検索
           <input
             value={query}
@@ -359,7 +359,7 @@ export function CrudManager<T extends IdentifiedRecord>({
           />
         </label>
         {filters.map((filter) => (
-          <label key={filter.key} className="w-full max-w-xs text-sm font-medium text-slate-700">
+          <label key={filter.key} className="w-full text-sm font-medium text-slate-700 lg:max-w-xs">
             {filter.label}
             <select
               value={filterValues[filter.key] ?? ""}
@@ -387,7 +387,52 @@ export function CrudManager<T extends IdentifiedRecord>({
         </div>
       </div>
 
-      <div className="min-h-0 overflow-auto rounded-lg border border-slate-200 bg-white">
+      <div className="space-y-3 md:hidden">
+        {pagedRows.length > 0 ? (
+          pagedRows.map((row) => (
+            <article key={row.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="space-y-3">
+                {columns.map((column) => (
+                  <div key={column.key} className="grid gap-1">
+                    <p className="text-xs font-semibold text-slate-500">{column.label}</p>
+                    <div className="min-w-0 break-words text-sm text-slate-800">
+                      {renderCell(row, column)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingRow(row);
+                    setValidationMessage("");
+                    setIsEditorOpen(true);
+                  }}
+                  disabled={isBusy}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+                >
+                  編集
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRowToDelete(row)}
+                  disabled={isBusy}
+                  className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                >
+                  削除
+                </button>
+              </div>
+            </article>
+          ))
+        ) : (
+          <div className="rounded-lg border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-500">
+            データがありません。新規作成ボタンから登録してください。
+          </div>
+        )}
+      </div>
+
+      <div className="hidden min-h-0 overflow-auto rounded-lg border border-slate-200 bg-white md:block">
         <table className="min-w-full table-fixed border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600">
             <tr>
@@ -507,12 +552,12 @@ export function CrudManager<T extends IdentifiedRecord>({
 
       {isEditorOpen && editingRow ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+          <div className="flex max-h-[92dvh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
               <h2 className="text-lg font-bold text-slate-950">{title}編集</h2>
               <p className="mt-1 text-sm text-slate-500">入力内容はモックデータに保存されます。</p>
             </div>
-            <div className="grid max-h-[70vh] gap-4 overflow-auto p-6 md:grid-cols-2">
+            <div className="grid gap-4 overflow-auto p-4 sm:p-6 md:grid-cols-2">
               {validationMessage ? (
                 <p className="md:col-span-2 rounded-md bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {validationMessage}
@@ -636,7 +681,7 @@ export function CrudManager<T extends IdentifiedRecord>({
                 </div>
               ) : null}
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">
+            <div className="grid grid-cols-2 gap-2 border-t border-slate-200 px-4 py-4 sm:flex sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={() => setIsEditorOpen(false)}
@@ -660,12 +705,12 @@ export function CrudManager<T extends IdentifiedRecord>({
 
       {rowToDelete ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl sm:p-6">
             <h2 className="text-lg font-bold text-slate-950">削除確認</h2>
             <p className="mt-3 text-sm text-slate-600">
               このデータを削除します。よろしいですか？
             </p>
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
               <button
                 type="button"
                 onClick={() => setRowToDelete(null)}
@@ -689,7 +734,7 @@ export function CrudManager<T extends IdentifiedRecord>({
 
       {isUploadOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4">
-          <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-xl">
+          <div className="max-h-[92dvh] w-full max-w-xl overflow-auto rounded-lg bg-white p-5 shadow-xl sm:p-6">
             <h2 className="text-lg font-bold text-slate-950">ファイルアップロード</h2>
             <p className="mt-1 text-sm text-slate-500">
               将来はS3保存とベクトルDB同期をここから実行します。
@@ -716,7 +761,7 @@ export function CrudManager<T extends IdentifiedRecord>({
                 選択中: {uploadFileName}
               </p>
             ) : null}
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
               <button
                 type="button"
                 onClick={() => setIsUploadOpen(false)}

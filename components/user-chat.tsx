@@ -27,6 +27,8 @@ export function UserChat() {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(["cat-hr", "cat-service"]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
 
   const groupCategories = useMemo(
     () => groups.find((group) => group.id === CURRENT_GROUP_ID)?.categoryIds ?? [],
@@ -62,6 +64,12 @@ export function UserChat() {
     setMessages([]);
     setInput("");
     setSelectedCategoryIds(groupCategories);
+    setIsHistoryOpen(false);
+  };
+
+  const selectThread = (thread: string) => {
+    setActiveThread(thread);
+    setIsHistoryOpen(false);
   };
 
   const sendMessage = (event: FormEvent<HTMLFormElement>) => {
@@ -112,8 +120,25 @@ export function UserChat() {
         </div>
       </header>
 
-      <section className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[240px_1fr_320px] lg:p-8">
-        <aside className="flex min-h-0 flex-col rounded-lg border border-slate-200 bg-white">
+      <section className="grid min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:grid-cols-[240px_1fr_320px] lg:p-8">
+        <div className="grid grid-cols-2 gap-2 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setIsHistoryOpen(true)}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+          >
+            チャット履歴
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCategoryFilterOpen(true)}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+          >
+            カテゴリ絞り込み
+          </button>
+        </div>
+
+        <aside className="hidden min-h-0 flex-col rounded-lg border border-slate-200 bg-white lg:flex">
           <div className="border-b border-slate-200 bg-sky-500 px-4 py-3 text-base font-bold text-white">
             YourNavi-QAI
           </div>
@@ -135,7 +160,7 @@ export function UserChat() {
                 <button
                   key={thread}
                   type="button"
-                  onClick={() => setActiveThread(thread)}
+                  onClick={() => selectThread(thread)}
                   className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm ${
                     activeThread === thread
                       ? "bg-sky-100 text-sky-950"
@@ -153,18 +178,18 @@ export function UserChat() {
           </div>
         </aside>
 
-        <div className="flex min-h-0 flex-col rounded-lg border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 px-6 py-4">
+        <div className="flex min-h-[calc(100dvh-178px)] flex-col rounded-lg border border-slate-200 bg-white lg:min-h-0">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
             <h2 className="text-xl font-bold text-slate-950">AIチャット</h2>
             <p className="mt-1 text-sm text-slate-600">
               {activeThread}
             </p>
           </div>
-          <div className="min-h-[420px] flex-1 space-y-4 overflow-auto p-6">
+          <div className="min-h-[360px] flex-1 space-y-4 overflow-auto p-3 sm:p-6 lg:min-h-[420px]">
             {messages.map((message, index) => (
               <div
                 key={`${message.role}-${index}`}
-                className={`max-w-3xl rounded-lg px-4 py-3 text-sm ${
+                className={`max-w-full rounded-lg px-3 py-3 text-sm sm:px-4 lg:max-w-3xl ${
                   message.role === "user"
                     ? "ml-auto bg-slate-950 text-white"
                     : "bg-slate-100 text-slate-800"
@@ -183,7 +208,7 @@ export function UserChat() {
                     {message.answers.map((answer) => (
                       <article
                         key={answer.title}
-                        className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+                        className="min-w-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:p-4"
                       >
                         <h3 className="text-sm font-bold text-slate-950">{answer.title}</h3>
                         <p className="mt-3 leading-6 text-slate-700">{answer.body}</p>
@@ -204,7 +229,7 @@ export function UserChat() {
                           {answer.references.map((reference) => (
                             <div
                               key={`${reference.dataType}-${reference.title}`}
-                              className="grid gap-1 text-xs text-slate-600"
+                              className="grid min-w-0 gap-1 break-words text-xs text-slate-600"
                             >
                               <span>教師データ種別：{reference.dataType}</span>
                               <span>使用カテゴリ：{reference.category}</span>
@@ -250,19 +275,19 @@ export function UserChat() {
               }}
               placeholder="質問を入力"
               rows={1}
-              className="min-w-0 flex-1 resize-none rounded-md border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              className="min-w-0 flex-1 resize-none rounded-md border border-slate-300 px-3 py-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200 sm:px-4"
             />
             <button
               type="submit"
               disabled={isSending}
-              className="rounded-md bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+              className="shrink-0 rounded-md bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:px-5"
             >
               {isSending ? "送信中..." : "送信"}
             </button>
           </form>
         </div>
 
-        <aside className="rounded-lg border border-slate-200 bg-white p-5">
+        <aside className="hidden rounded-lg border border-slate-200 bg-white p-5 lg:block">
           <h2 className="text-sm font-bold text-slate-950">検索対象カテゴリ</h2>
           <p className="mt-2 text-sm text-slate-600">
             未選択の場合は、所属グループの閲覧可能カテゴリをすべて検索します。選択すると、そのカテゴリ配下のみで絞り込みます。
@@ -290,6 +315,96 @@ export function UserChat() {
           </button>
         </aside>
       </section>
+
+      {isHistoryOpen ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/40 lg:hidden">
+          <aside className="flex h-full w-[min(88vw,340px)] flex-col bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-sky-500 px-4 py-3 text-base font-bold text-white">
+              <span>YourNavi-QAI</span>
+              <button type="button" onClick={() => setIsHistoryOpen(false)} className="rounded px-2 py-1 text-sm">
+                閉じる
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <button
+                type="button"
+                onClick={createThread}
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                新規チャット
+              </button>
+              <input
+                placeholder="検索"
+                className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              />
+              <h2 className="mt-6 text-sm font-bold text-slate-950">履歴</h2>
+              <div className="mt-3 space-y-1">
+                {threads.map((thread) => (
+                  <button
+                    key={thread}
+                    type="button"
+                    onClick={() => selectThread(thread)}
+                    className={`flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm ${
+                      activeThread === thread
+                        ? "bg-sky-100 text-sky-950"
+                        : "text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span className="truncate">{thread}</span>
+                    <span className="ml-2 text-slate-400">...</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-slate-200 p-4 text-sm text-slate-500">
+              ユーザ
+            </div>
+          </aside>
+        </div>
+      ) : null}
+
+      {isCategoryFilterOpen ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/40 lg:hidden">
+          <div className="ml-auto flex h-full w-[min(90vw,360px)] flex-col bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h2 className="text-sm font-bold text-slate-950">検索対象カテゴリ</h2>
+              <button
+                type="button"
+                onClick={() => setIsCategoryFilterOpen(false)}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700"
+              >
+                閉じる
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-5">
+              <p className="text-sm text-slate-600">
+                未選択の場合は、所属グループの閲覧可能カテゴリをすべて検索します。選択すると、そのカテゴリ配下のみで絞り込みます。
+              </p>
+              <div className="mt-4 rounded-md bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-900">
+                現在の検索対象：{selectedCategoryNames.length > 0 ? selectedCategoryNames.join("、") : "指定なし"}
+              </div>
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <CategoryTree
+                  categories={visibleRootCategoryTree}
+                  selectedValues={selectedCategoryIds}
+                  valueMode="id"
+                  selectable="multiple"
+                  onChange={(values) =>
+                    setSelectedCategoryIds(values.filter((value) => visibleCategorySet.has(value)))
+                  }
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryIds(groupCategories)}
+                className="mt-3 w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                全カテゴリを選択
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
